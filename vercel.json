@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/frontend/naveen-interiors-v27-bedroom-kitchen-images-fixed.html"
+    }
+  ]
+}
