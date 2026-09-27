@@ -380,6 +380,18 @@ document.getElementById('downloadConcept').addEventListener('click',()=>{
   link.remove();
 });
 
+async function readApiResponse(response,fallbackMessage){
+  const contentType=response.headers.get('content-type')||'';
+  if(!contentType.includes('application/json')){
+    await response.text();
+    throw new Error(response.ok?fallbackMessage:`Request failed (${response.status}). The server endpoint may not be deployed yet`);
+  }
+  let result;
+  try{result=await response.json()}catch{throw new Error(fallbackMessage)}
+  if(!response.ok)throw new Error(result.error||fallbackMessage);
+  return result;
+}
+
 conceptInquiryForm.addEventListener('submit',async event=>{
   event.preventDefault();
   if(!selectedConcept||!conceptInquiryForm.reportValidity())return;
@@ -396,9 +408,10 @@ conceptInquiryForm.addEventListener('submit',async event=>{
       consent:document.getElementById('inquiryConsent').checked
     };
     const response=await fetch('/api/design-inquiries',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    const result=await response.json();
-    if(!response.ok)throw new Error(result.error||'Unable to send your design enquiry');
-    inquiryStatus.textContent='Enquiry received. Our design team will follow up with you';
+    const result=await readApiResponse(response,'Unable to send your design enquiry');
+    inquiryStatus.textContent=result.notificationSent
+      ? 'Enquiry received. Our design team will follow up with you'
+      : 'Enquiry saved, but the email notification could not be sent. Please contact the studio if you do not hear from us';
     inquiryStatus.classList.add('show');
     inquiryStatus.focus();
     conceptInquiryForm.reset();
@@ -448,9 +461,10 @@ if(leadForm){
       const payload=Object.fromEntries(new FormData(leadForm));
       payload.consent=document.getElementById('leadConsent').checked;
       const response=await fetch('/api/leads',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-      const result=await response.json();
-      if(!response.ok)throw new Error(result.error||'Unable to send your request');
-      successBox.textContent='Thank you. Your consultation request has been received.';
+      const result=await readApiResponse(response,'Unable to send your request');
+      successBox.textContent=result.notificationSent
+        ? 'Thank you. Your consultation request has been received.'
+        : 'Your request was saved, but the email notification could not be sent. Please contact the studio if you do not hear from us';
       successBox.classList.add('show');
       successBox.focus();
       leadForm.reset();
@@ -543,9 +557,10 @@ if(feedbackForm){
         email:email.value
       };
       const response=await fetch('/api/feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-      const result=await response.json();
-      if(!response.ok)throw new Error(result.error||'Unable to send your feedback');
-      successBox.textContent='Thank you. Your feedback has been received.';
+      const result=await readApiResponse(response,'Unable to send your feedback');
+      successBox.textContent=result.notificationSent
+        ? 'Thank you. Your feedback has been received.'
+        : 'Your feedback was saved, but the email notification could not be sent';
       successBox.classList.add('show');
       successBox.focus();
       feedbackForm.reset();
